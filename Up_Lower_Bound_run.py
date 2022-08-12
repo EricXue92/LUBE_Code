@@ -74,21 +74,6 @@ class Run:
         no_pcgrad_pred = self.No_PCGrad.scaler_y.inverse_transform(no_pcgrad_pred)
         return no_pcgrad_pred
 
-    def save_pred_results(self, model, predicitons, name):
-        df = pd.DataFrame(predicitons, columns = ['Lowerbound', 'Upperbound'])
-        df['y_true'] = model.reversed_data(model.y_test[:,0].reshape(-1,1))
-        df['Width'] = (df['Upperbound']-df['Lowerbound'])
-        df['MPIW'] = np.mean(df['Width'])
-        df['NMPIW'] = df['MPIW']/self.No_PCGrad.range
-        df['Flag']= np.where((df['Upperbound'] >= df['y_true']) & (df['Lowerbound'] <= df['y_true']), 1, 0)  
-        df['PICP'] =  np.mean( (df['Upperbound'] >= df['y_true']) & (df['Lowerbound'] <= df['y_true']) )
-        # To sort the columns 
-        df = df[['PICP','Lowerbound','y_true','Upperbound','Flag','MPIW','NMPIW','Width']]
-        # Save all predicted value
-        dataset_name = model.dataset.split('.')[0]
-        df.to_csv( f'{dataset_name}_{name}_pred.csv', header=True, index = False)
-        self.result.append({'PICP':np.mean(df['PICP']),'MPIW':np.mean(df['MPIW']),'NMPIW':np.mean(df['NMPIW'])})
-
     def run_pcgrad(self):
 
         self.PCGrad_model.init_arguments(method = 'PCGrad')
@@ -121,6 +106,21 @@ class Run:
         # Transfored to original y
         pcgrad_pred = self.PCGrad.scaler_y.inverse_transform(pcgrad_pred)
         return pcgrad_pred
+
+    def save_pred_results(self, model, predicitons, name):
+        df = pd.DataFrame(predicitons, columns = ['Lowerbound', 'Upperbound'])
+        df['y_true'] = model.reversed_data(model.y_test[:,0].reshape(-1,1))
+        df['Width'] = (df['Upperbound']-df['Lowerbound'])
+        df['MPIW'] = np.mean(df['Width'])
+        df['NMPIW'] = df['MPIW']/self.No_PCGrad.range
+        df['Flag']= np.where((df['Upperbound'] >= df['y_true']) & (df['Lowerbound'] <= df['y_true']), 1, 0)  
+        df['PICP'] =  np.mean( (df['Upperbound'] >= df['y_true']) & (df['Lowerbound'] <= df['y_true']) )
+        # To sort the columns 
+        df = df[['PICP','Lowerbound','y_true','Upperbound','Flag','MPIW','NMPIW','Width']]
+        # Save all predicted value
+        dataset_name = model.dataset.split('.')[0]
+        df.to_csv( f'{dataset_name}_{name}_pred.csv', header=True, index = False)
+        self.result.append({'PICP':np.mean(df['PICP']),'MPIW':np.mean(df['MPIW']),'NMPIW':np.mean(df['NMPIW'])})
 
     def print_comparison(self):
         res = pd.DataFrame(self.result, index = ['No_PCGrad','PCGrad'])
