@@ -17,6 +17,9 @@ from Generate_DATA_2 import generate_data2
 # tf.random.set_seed(2)
 #np.random.seed(2)
 
+# Split the data identically each time for No_PCGrad and PCGrad
+seed = np.random.randint(100)
+
 class Run:
 
     epochs = 2000
@@ -109,7 +112,7 @@ class Run:
 
     def save_pred_results(self, model, predicitons, name):
         df = pd.DataFrame(predicitons, columns = ['Lowerbound', 'Upperbound'])
-        df['y_true'] = model.reversed_data(model.y_test[:,0].reshape(-1,1))
+        df['y_true'] = model.reversed_norm(model.y_test[:,0].reshape(-1,1))
         df['Width'] = (df['Upperbound']-df['Lowerbound'])
         df['MPIW'] = np.mean(df['Width'])
         df['NMPIW'] = df['MPIW']/self.No_PCGrad.range
@@ -142,19 +145,19 @@ class Run:
       
 def main():
 
-    # For datasets1
-    datasets1 = ['1_constant_noise.csv','2_nonconstant_noise.csv','4_Concrete_Data.xls','5_BETAPLASMA.csv', '6_Drybulbtemperature.xlsx', '7_moisture content of raw material.xlsx', 
-    '8_steam pressure.xlsx', '9_main stem temperature.xlsx','10_reheat steam temperature.xlsx']
-    targets1 = ['y', 'y', 'Concrete compressive strength(MPa, megapascals) ','BETAPLASMA','dry bulb temperature',
-    'moisture content of raw material','steam pressure','main stem temperature','reheat steam temperature']
+    # # For datasets1
+    # datasets1 = ['1_constant_noise.csv','2_nonconstant_noise.csv','4_Concrete_Data.xls','5_BETAPLASMA.csv', '6_Drybulbtemperature.xlsx', '7_moisture content of raw material.xlsx', 
+    # '8_steam pressure.xlsx', '9_main stem temperature.xlsx','10_reheat steam temperature.xlsx']
+    # targets1 = ['y', 'y', 'Concrete compressive strength(MPa, megapascals) ','BETAPLASMA','dry bulb temperature',
+    # 'moisture content of raw material','steam pressure','main stem temperature','reheat steam temperature']
 
-    # # For datasets2
-    # datasets2  = ['1_Boston_Housing.csv', '2_Concrete_Data.xls',
-    # '3_Energy Efficiency.csv', '4_kin8nm.csv', '5_Naval Propulsion.csv', 
-    # '6_Power.csv', '7_Protein.csv', '8_Wine Quality.csv', '9_Yacht.csv','10_Song_Year.csv']
-    # targets2 = ['MEDV','Concrete compressive strength(MPa, megapascals) ','Y1','y',
-    # 'gt_t_decay','Net hourly electrical energy output','y','quality','Residuary resistance per unit weight of displacement',
-    # 'Year']
+    # For datasets2
+    datasets2  = ['1_Boston_Housing.csv', '2_Concrete_Data.xls',
+    '3_Energy Efficiency.csv', '4_kin8nm.csv', '5_Naval Propulsion.csv', 
+    '6_Power.csv', '7_Protein.csv', '8_Wine Quality.csv', '9_Yacht.csv','10_Song_Year.csv']
+    targets2 = ['MEDV','Concrete compressive strength(MPa, megapascals) ','Y1','y',
+    'gt_t_decay','Net hourly electrical energy output','y','quality','Residuary resistance per unit weight of displacement',
+    'Year']
 
     def training_data(datasets, targets):
         for index, (dataset, target) in enumerate(zip(datasets, targets)):
@@ -167,27 +170,27 @@ def main():
             # else:
             #     times = 1
 
-            times = 10
+            times = 1
             temp = []
 
             for i in range(times):
-                # To generate random dataset1 and dataset2 
-                if dataset == '1_constant_noise.csv':
-                    generate_data1()
-                if dataset == '2_nonconstant_noise.csv':
-                    generate_data2()
+                # # To generate random dataset1 and dataset2 
+                # if dataset == '1_constant_noise.csv':
+                #     generate_data1()
+                # if dataset == '2_nonconstant_noise.csv':
+                #     generate_data2()
 
                 # Default setting to 'big' data 
-                No_PCGrad = UpperLowerBound(dataset, target, seed = i)
+                No_PCGrad = UpperLowerBound(dataset, target, seed = seed+i)
 
                 # To calculate the data size 
                 if No_PCGrad.y_test.shape[0] < 100.0:
-                    No_PCGrad = UpperLowerBound(dataset, target, drop_out = 0.5, flag = True, seed = i)
+                    No_PCGrad = UpperLowerBound(dataset, target, drop_out = 0.5, flag = True, seed = seed+i)
                     initial_weights = No_PCGrad.model.get_weights()
-                    PCGrad = UpperLowerBound(dataset, target, drop_out = 0.5, flag = True, seed = i)
+                    PCGrad = UpperLowerBound(dataset, target, drop_out = 0.5, flag = True, seed = seed+i)
                 else:
                     initial_weights = No_PCGrad.model.get_weights()
-                    PCGrad = UpperLowerBound(dataset, target, seed = i)
+                    PCGrad = UpperLowerBound(dataset, target, seed = seed+i)
                 # To ensure PCGrad and No_PCGrad with same set of initial weights
                 PCGrad.model.set_weights(initial_weights)
 
@@ -205,8 +208,8 @@ def main():
             name = dataset.split('.')[0]
             output.to_csv(f'{name}_Outputs.csv')
 
-    training_data(datasets1, targets1)
-    #training_data(datasets2, targets2)
+    # training_data(datasets1, targets1)
+    training_data(datasets2, targets2)
 
 if __name__ == "__main__":
     # set the epochs 
