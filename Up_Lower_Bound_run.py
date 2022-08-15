@@ -17,8 +17,7 @@ from Generate_DATA_2 import generate_data2
 # tf.random.set_seed(2)
 #np.random.seed(2)
 
-# Split the data identically each time for No_PCGrad and PCGrad
-seed = np.random.randint(100)
+
 
 class Run:
 
@@ -174,6 +173,10 @@ def main():
             temp = []
 
             for i in range(times):
+
+                # Split the data identically each time for No_PCGrad and PCGrad
+                seed = np.random.randint(100)
+
                 # # To generate random dataset1 and dataset2 
                 # if dataset == '1_constant_noise.csv':
                 #     generate_data1()
@@ -181,16 +184,16 @@ def main():
                 #     generate_data2()
 
                 # Default setting to 'big' data 
-                No_PCGrad = UpperLowerBound(dataset, target, seed = seed+i)
+                No_PCGrad = UpperLowerBound(dataset, target, seed = seed)
 
                 # To calculate the data size 
                 if No_PCGrad.y_test.shape[0] < 100.0:
-                    No_PCGrad = UpperLowerBound(dataset, target, drop_out = 0.5, flag = True, seed = seed+i)
+                    No_PCGrad = UpperLowerBound(dataset, target, drop_out = 0.5, flag = True, seed = seed)
                     initial_weights = No_PCGrad.model.get_weights()
-                    PCGrad = UpperLowerBound(dataset, target, drop_out = 0.5, flag = True, seed = seed+i)
+                    PCGrad = UpperLowerBound(dataset, target, drop_out = 0.5, flag = True, seed = seed)
                 else:
                     initial_weights = No_PCGrad.model.get_weights()
-                    PCGrad = UpperLowerBound(dataset, target, seed = seed+i)
+                    PCGrad = UpperLowerBound(dataset, target, seed = seed)
                 # To ensure PCGrad and No_PCGrad with same set of initial weights
                 PCGrad.model.set_weights(initial_weights)
 
