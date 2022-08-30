@@ -17,6 +17,7 @@ from Generate_DATA_2 import generate_data2
 # tf.random.set_seed(2)
 #np.random.seed(2)
 
+from CustomEarlyStopping import CustomEarlyStopping
 
 
 class Run:
@@ -58,22 +59,22 @@ class Run:
         validation_data = (self.No_PCGrad.X_test, [self.No_PCGrad.y_test[:,0], self.No_PCGrad.y_test[:,1]]),
         batch_size=self.batch_size, 
         epochs= self.epochs,
-        callbacks=[reduce_lr], 
-        verbose=0)
+        callbacks=[reduce_lr, CustomEarlyStopping(patience=1000)], 
+        verbose=1)
 
         # # Save the training history for analysis 
-        # name = self.No_PCGrad.dataset.split('.')[0]
-        # with open(f'{name}_history.pkl', 'wb') as handle:
-        #     pickle.dump(history_no_pcgrad.history, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        name = self.No_PCGrad.dataset.split('.')[0]
+        with open(f'{name}_history.pkl', 'wb') as handle:
+            pickle.dump(history_no_pcgrad.history, handle, protocol=pickle.HIGHEST_PROTOCOL)
   
-        # # To plot and save .png
-        # self.plot_training(f'{name}_history.pkl')
+        # To plot and save .png
+        self.plot_training(f'{name}_history.pkl')
 
         # Predicted results
         no_pcgrad_pred = self.No_PCGrad_model.predict(self.No_PCGrad.X_test)
 
         # Transformed to original y
-        no_pcgrad_pred = self.No_PCGrad.scaler_y.inverse_transform(no_pcgrad_pred)
+        #no_pcgrad_pred = self.No_PCGrad.scaler_y.inverse_transform(no_pcgrad_pred)
         return no_pcgrad_pred
 
     def run_pcgrad(self):
@@ -93,25 +94,26 @@ class Run:
         validation_data = (self.PCGrad.X_test, [self.PCGrad.y_test[:,0], self.PCGrad.y_test[:,1]]),
         batch_size=self.batch_size, 
         epochs= self.epochs,
-        callbacks=[reduce_lr],
-        verbose=0)
+        callbacks=[reduce_lr, CustomEarlyStopping(patience=1000)],
+        verbose=1)
 
         # # Save the training history 
-        # name = self.PCGrad.dataset.split('.')[0]
-        # with open(f'{name}_pcgrad_history.pkl', 'wb') as handle:
-        #     pickle.dump(history_pcgrad.history, handle, protocol=pickle.HIGHEST_PROTOCOL)     
-        # #model.save_weights("checkpoints/{}".format(self.filename))
+        name = self.PCGrad.dataset.split('.')[0]
+        with open(f'{name}_pcgrad_history.pkl', 'wb') as handle:
+            pickle.dump(history_pcgrad.history, handle, protocol=pickle.HIGHEST_PROTOCOL)     
+        #model.save_weights("checkpoints/{}".format(self.filename))
 
-        # self.plot_training(f'{name}_pcgrad_history.pkl')
+        self.plot_training(f'{name}_pcgrad_history.pkl')
 
         pcgrad_pred = self.PCGrad_model.predict(self.PCGrad.X_test)
         # Transfored to original y
-        pcgrad_pred = self.PCGrad.scaler_y.inverse_transform(pcgrad_pred)
+        #pcgrad_pred = self.PCGrad.scaler_y.inverse_transform(pcgrad_pred)
         return pcgrad_pred
 
     def save_pred_results(self, model, predicitons, name):
         df = pd.DataFrame(predicitons, columns = ['Lowerbound', 'Upperbound'])
-        df['y_true'] = model.reversed_norm(model.y_test[:,0].reshape(-1,1))
+        #df['y_true'] = model.reversed_norm(model.y_test[:,0].reshape(-1,1))
+        df['y_true'] = model.y_test[:,0]
         df['Width'] = (df['Upperbound']-df['Lowerbound'])
         df['MPIW'] = np.mean(df['Width'])
         df['NMPIW'] = df['MPIW']/self.No_PCGrad.range
@@ -134,6 +136,7 @@ class Run:
         dict_data = pd.read_pickle(filename)  
         df = pd.DataFrame(dict_data)
         fig = plt.figure(figsize=(10,6))
+        plt.ylim(0, 1.25)
         sns.set_style("ticks")
         plt.title(name)
         plt.xlabel("Epochs")
@@ -151,23 +154,28 @@ def main():
     # 'moisture content of raw material','steam pressure','main stem temperature','reheat steam temperature']
 
     # For datasets2
-    datasets2  = ['1_Boston_Housing.csv', '2_Concrete_Data.xls',
-    '3_Energy Efficiency.csv', '4_kin8nm.csv', '5_Naval Propulsion.csv', 
-    '6_Power.csv', '7_Protein.csv', '8_Wine Quality.csv', '9_Yacht.csv','10_Song_Year.csv']
-    targets2 = ['MEDV','Concrete compressive strength(MPa, megapascals) ','Y1','y',
-    'gt_t_decay','Net hourly electrical energy output','y','quality','Residuary resistance per unit weight of displacement',
-    'Year']
+    # datasets2  = ['1_Boston_Housing.csv', '2_Concrete_Data.xls',
+    # '3_Energy Efficiency.csv', '4_kin8nm.csv', '5_Naval Propulsion.csv', 
+    # '6_Power.csv', '7_Protein.csv', '8_Wine Quality.csv', '9_Yacht.csv','10_Song_Year.csv']
+    # targets2 = ['MEDV','Concrete compressive strength(MPa, megapascals) ','Y1','y',
+    # 'gt_t_decay','Net hourly electrical energy output','y','quality','Residuary resistance per unit weight of displacement',
+    # 'Year']
+
+    datasets2  = ['1_Boston_Housing.csv', '3_Energy Efficiency.csv']
+    targets2 = ['MEDV', 'Y1']
+
+
 
     def training_data(datasets, targets):
         for index, (dataset, target) in enumerate(zip(datasets, targets)):
 
             # For datasets2 
-            # if dataset == '7_Protein.csv':
-            #     times = 5 
-            # elif dataset == '10_Song_Year.csv':
-            #     times = 1
-            # else:
-            #     times = 1
+            if dataset == '7_Protein.csv':
+                times = 5 
+            elif dataset == '10_Song_Year.csv':
+                times = 1
+            else:
+                times = 1
 
             times = 1
             temp = []
@@ -183,11 +191,15 @@ def main():
                 # if dataset == '2_nonconstant_noise.csv':
                 #     generate_data2()
 
-                # Default setting to 'big' data 
+                # No_PCGrad = UpperLowerBound(dataset, target, drop_out = 0.5, flag = True, seed = seed)
+                # initial_weights = No_PCGrad.model.get_weights()
+                # PCGrad = UpperLowerBound(dataset, target, drop_out = 0.5, flag = True, seed = seed)
+
+                #Default setting to 'big' data 
                 No_PCGrad = UpperLowerBound(dataset, target, seed = seed)
 
                 # To calculate the data size 
-                if No_PCGrad.y_test.shape[0] < 100.0:
+                if No_PCGrad.y_test.shape[0] < 60.0:
                     No_PCGrad = UpperLowerBound(dataset, target, drop_out = 0.5, flag = True, seed = seed)
                     initial_weights = No_PCGrad.model.get_weights()
                     PCGrad = UpperLowerBound(dataset, target, drop_out = 0.5, flag = True, seed = seed)
